@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { scrapeUsersWithoutHours, getTMetricCredentials } from '@/lib/tmetric-scraper';
 import { getLastWorkdaysRange, toISODate } from '@/lib/date-utils';
 import { CheckHoursResponse } from '@/lib/types';
+import { sendSlackNotification } from '@/lib/slack';
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,6 +44,19 @@ export async function POST(req: NextRequest) {
         checkedAt: new Date().toISOString(),
       },
     };
+
+    // Send Slack notification (non-blocking)
+    sendSlackNotification(
+      usersWithoutHours,
+      {
+        from: toISODate(from),
+        to: toISODate(to),
+      },
+      true // isManual = true
+    ).catch((error) => {
+      console.error('[API] Error sending Slack notification:', error);
+      // Don't fail the request if Slack notification fails
+    });
 
     return NextResponse.json(response);
   } catch (error) {

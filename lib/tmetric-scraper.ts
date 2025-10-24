@@ -1,5 +1,5 @@
 import { chromium, Page, Browser } from 'playwright';
-import { TMetricCredentials, UserWithoutHours } from './types';
+import { TMetricCredentials, UserWithoutHours, UserChartData } from './types';
 import { toISODate } from './date-utils';
 
 /**
@@ -444,16 +444,21 @@ async function getUsersWithoutHours(
       await page.waitForTimeout(2000);
 
       // Extract data from detailed report
-      const reportData = await page.evaluate((): { lastEntry: string | null; totalHours: string } => {
+      const reportData = await page.evaluate((): {
+        lastEntry: string | null;
+        totalHours: string;
+        dailyHours: Array<{ date: string; hours: number }>;
+      } => {
         const table = document.querySelector('table.table-hover');
         if (!table) {
-          return { lastEntry: null, totalHours: '0 h 0 min' };
+          return { lastEntry: null, totalHours: '0 h 0 min', dailyHours: [] };
         }
 
         const rows = table.querySelectorAll('tbody tr');
         let lastEntryDate: string | null = null;
         let lastEntryTimestamp: number = 0;
         let totalMinutes = 0;
+        const dailyData: Array<{ date: string; hours: number }> = [];
 
         rows.forEach((row) => {
           const cells = row.querySelectorAll('td');
@@ -492,6 +497,10 @@ async function getUsersWithoutHours(
           const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
           const rowMinutes = hours * 60 + minutes;
 
+          // Always add to daily data (even if 0 hours)
+          const hoursDecimal = rowMinutes / 60;
+          dailyData.push({ date: dateText, hours: hoursDecimal });
+
           if (rowMinutes > 0) {
             totalMinutes += rowMinutes;
 
@@ -521,6 +530,7 @@ async function getUsersWithoutHours(
         return {
           lastEntry: lastEntryDate,
           totalHours: totalHoursStr,
+          dailyHours: dailyData,
         };
       });
 
@@ -560,6 +570,277 @@ async function getUsersWithoutHours(
         lastEntry: null,
         totalHoursLast30Days: '0 h 0 min',
       });
+    }
+  }
+
+  console.log(`[TMetric] Completed checking ${users.length} users`);
+
+  return users;
+}
+
+/**
+ * Get ALL users with their 30-day chart data
+ * @param page Playwright page instance
+ * @param fromDate Start date
+ * @param toDate End date (30 days from start)
+ * @returns Array of all users with their daily hours data
+ */
+async function getAllUsersChartData(
+  page: Page,
+  fromDate: Date,
+  toDate: Date
+): Promise<UserChartData[]> {
+  console.log('[TMetric] Navigating to staff reports...');
+
+  // Extract workspace ID from current URL
+  const currentUrl = page.url();
+  const workspaceMatch = currentUrl.match(/\/tracker\/(\d+)/);
+
+  if (!workspaceMatch) {
+    throw new Error('Could not extract workspace ID from URL: ' + currentUrl);
+  }
+
+  const workspaceId = workspaceMatch[1];
+  console.log('[TMetric] Workspace ID:', workspaceId);
+
+  const dateRange = `${toISODate(fromDate).replace(/-/g, '')}-${toISODate(toDate).replace(/-/g, '')}`;
+  console.log('[TMetric] Navigating to:', `https://app.tmetric.com/#/reports/${workspaceId}/staff?range=${dateRange}`);
+
+  await page.goto(`https://app.tmetric.com/#/reports/${workspaceId}/staff?range=${dateRange}`, {
+    waitUntil: 'networkidle',
+  });
+
+  await page.waitForTimeout(3000);
+
+  // Extract ALL users from the staff report table
+  const allUsers = await page.evaluate(() => {
+    const results: Array<{ id: string; name: string; userId: string }> = [];
+    const table = document.querySelector('table.table-team-summary-report');
+
+    if (!table) {
+      console.log('[TMetric] Staff report table not found');
+      return results;
+    }
+
+    const rows = table.querySelectorAll('tbody tr');
+
+    rows.forEach((row, index) => {
+      try {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 3) return;
+
+        const personCell = cells[0];
+        let name = personCell.textContent?.trim() || '';
+        name = name.replace(/\s+/g, ' ').trim() || 'Unknown';
+
+        if (name && name !== 'Unknown') {
+          results.push({
+            id: `user-${index}`,
+            name: name,
+            userId: '',
+          });
+        }
+      } catch (err) {
+        console.error('Error processing row:', err);
+      }
+    });
+
+    return results;
+  });
+
+  console.log(`[TMetric] Found ${allUsers.length} total users`);
+
+  // For each user, get their 30-day chart data
+  const users: UserChartData[] = [];
+
+  for (const userInfo of allUsers) {
+    console.log(`[TMetric] Getting 30-day chart data for: ${userInfo.name}`);
+
+    // Navigate back to staff report if needed
+    if (!page.url().includes('/reports/') || !page.url().includes('/staff')) {
+      await page.goto(`https://app.tmetric.com/#/reports/${workspaceId}/staff?range=${dateRange}`, {
+        waitUntil: 'networkidle',
+      });
+      await page.waitForTimeout(2000);
+    }
+
+    // Wait for Angular to be ready and table to load
+    await page.waitForTimeout(2000);
+    await page.waitForSelector('table.table-team-summary-report', { timeout: 10000 });
+
+    // Take screenshot for first user only (for debugging)
+    if (userInfo === allUsers[0]) {
+      await page.screenshot({ path: `debug-charts-staff-report-${Date.now()}.png` });
+      console.log(`[TMetric]   Screenshot saved for debugging`);
+    }
+
+    // Try to extract userId from Angular scope
+    let userId = '';
+    try {
+      const rowData = await page.evaluate((userName) => {
+        const rows = document.querySelectorAll('table.table-team-summary-report tbody tr');
+        const result = {
+          totalRows: rows.length,
+          found: false,
+          scopeData: null as any,
+          angularAvailable: false,
+          scopeFound: false,
+          itemFound: false,
+        };
+
+        for (const row of rows) {
+          const cells = row.querySelectorAll('td');
+          if (cells.length > 0) {
+            const nameCell = cells[0];
+            const text = nameCell.textContent?.trim() || '';
+
+            if (text === userName) {
+              result.found = true;
+              let scopeData = null;
+              try {
+                const angular = (window as any).angular;
+                result.angularAvailable = !!angular;
+
+                if (angular) {
+                  const element = angular.element(row);
+                  const scope = element.scope();
+                  result.scopeFound = !!scope;
+                  result.itemFound = scope ? !!scope.item : false;
+
+                  if (scope && scope.item) {
+                    scopeData = {
+                      userId: scope.item.userId,
+                      userProfileId: scope.item.userProfileId,
+                      userName: scope.item.userName,
+                    };
+                    result.scopeData = scopeData;
+                  }
+                }
+              } catch (e) {
+                // Error will be caught outside
+              }
+
+              return result;
+            }
+          }
+        }
+        return result;
+      }, userInfo.name);
+
+      console.log(`[TMetric]   Row data result:`, rowData);
+
+      if (rowData.found && rowData.scopeData?.userProfileId) {
+        userId = rowData.scopeData.userProfileId;
+        console.log(`[TMetric]   ✓ Found userId: ${userId}`);
+      } else {
+        console.log(`[TMetric]   ✗ No userId found for ${userInfo.name}, skipping. Found: ${rowData.found}, scopeData:`, rowData.scopeData);
+        continue;
+      }
+    } catch (err) {
+      console.error(`[TMetric]   ✗ Error extracting userId for ${userInfo.name}:`, err);
+      continue;
+    }
+
+    // Navigate to detailed report for this user
+    try {
+      const detailedUrl = `https://app.tmetric.com/#/reports/${workspaceId}/detailed?range=${dateRange}&user=${userId}&groupby=day`;
+      console.log(`[TMetric]   Navigating to detailed report: ${detailedUrl}`);
+
+      await page.goto(detailedUrl, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(2000);
+
+      // Extract daily hours data
+      const reportData = await page.evaluate((): {
+        lastEntry: string | null;
+        totalHours: string;
+        dailyHours: Array<{ date: string; hours: number }>;
+      } => {
+        const dailyData: Array<{ date: string; hours: number }> = [];
+        let totalMinutes = 0;
+        let lastEntryDate: string | null = null;
+        let lastEntryTimestamp = 0;
+
+        const table = document.querySelector('table.table-detailed-report');
+        if (!table) {
+          return {
+            lastEntry: null,
+            totalHours: '0 h 0 min',
+            dailyHours: [],
+          };
+        }
+
+        const rows = table.querySelectorAll('tbody tr');
+
+        rows.forEach((row) => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length === 0) return;
+
+          // Try last cell first for time
+          let timeText = '';
+          const lastCellText = cells[cells.length - 1]?.textContent?.trim() || '';
+          if (lastCellText.match(/\d+\s*(h|min)/)) {
+            timeText = lastCellText;
+          } else if (cells.length > 1) {
+            const secondLastText = cells[cells.length - 2]?.textContent?.trim() || '';
+            if (secondLastText.match(/\d+\s*(h|min)/)) {
+              timeText = secondLastText;
+            }
+          }
+
+          // Try first cell for date
+          const dateText = cells[0]?.textContent?.trim() || '';
+          if (!dateText.match(/\d{1,2}\/\d{1,2}\/\d{4}/)) return;
+
+          // Parse time
+          let rowMinutes = 0;
+          const hourMatch = timeText.match(/(\d+)\s*h/);
+          const minMatch = timeText.match(/(\d+)\s*min/);
+          if (hourMatch) rowMinutes += parseInt(hourMatch[1]) * 60;
+          if (minMatch) rowMinutes += parseInt(minMatch[1]);
+
+          if (rowMinutes > 0) {
+            totalMinutes += rowMinutes;
+            const dateParts = dateText.split('/');
+            if (dateParts.length === 3) {
+              const day = parseInt(dateParts[0]);
+              const month = parseInt(dateParts[1]) - 1;
+              const year = parseInt(dateParts[2]);
+              const entryDate = new Date(year, month, day);
+              const timestamp = entryDate.getTime();
+
+              if (timestamp > lastEntryTimestamp) {
+                lastEntryTimestamp = timestamp;
+                lastEntryDate = dateText;
+              }
+            }
+
+            const hoursDecimal = rowMinutes / 60;
+            dailyData.push({ date: dateText, hours: hoursDecimal });
+          }
+        });
+
+        const totalHours = Math.floor(totalMinutes / 60);
+        const totalMins = totalMinutes % 60;
+        const totalHoursStr = `${totalHours} h ${totalMins} min`;
+
+        return {
+          lastEntry: lastEntryDate,
+          totalHours: totalHoursStr,
+          dailyHours: dailyData,
+        };
+      });
+
+      users.push({
+        id: userId,
+        name: userInfo.name,
+        email: '',
+        dailyHours: reportData.dailyHours,
+        totalHoursLast30Days: reportData.totalHours,
+      });
+
+      console.log(`[TMetric]   ✓ ${userInfo.name}: Total: ${reportData.totalHours}, ${reportData.dailyHours.length} days with data`);
+    } catch (err) {
+      console.error(`[TMetric]   ✗ Error checking ${userInfo.name}:`, err);
     }
   }
 
@@ -611,6 +892,56 @@ export async function scrapeUsersWithoutHours(
     return users;
   } catch (error) {
     console.error('[TMetric] Scraping error:', error);
+    throw error;
+  } finally {
+    if (browser) {
+      console.log('[TMetric] Closing browser...');
+      await browser.close();
+    }
+  }
+}
+
+/**
+ * Main function to scrape ALL TMetric users and get their chart data
+ * @param credentials TMetric login credentials
+ * @param fromDate Start date for checking (30 days ago)
+ * @param toDate End date for checking (today)
+ * @returns Array of all users with their daily hours data
+ */
+export async function scrapeAllUsersChartData(
+  credentials: TMetricCredentials,
+  fromDate: Date,
+  toDate: Date
+): Promise<UserChartData[]> {
+  let browser: Browser | null = null;
+
+  try {
+    console.log('[TMetric] Launching browser for chart data...');
+    browser = await chromium.launch({
+      headless: false,
+      slowMo: 500,
+      timeout: 60000,
+    });
+
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 720 },
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+    });
+
+    const page = await context.newPage();
+    page.setDefaultTimeout(30000);
+
+    // Login to TMetric
+    await loginToTMetric(page, credentials);
+
+    // Get all users with their chart data
+    const users = await getAllUsersChartData(page, fromDate, toDate);
+
+    console.log(`[TMetric] Found chart data for ${users.length} users`);
+
+    return users;
+  } catch (error) {
+    console.error('[TMetric] Chart data scraping error:', error);
     throw error;
   } finally {
     if (browser) {

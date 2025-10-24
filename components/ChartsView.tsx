@@ -2,28 +2,28 @@
 
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
-import { CheckHoursResponse } from '@/lib/types';
-import UserTable from './UserTable';
+import { GetChartsResponse, UserChartData } from '@/lib/types';
+import UserChart from './UserChart';
 import Link from 'next/link';
 
-export default function Dashboard() {
+export default function ChartsView() {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<CheckHoursResponse | null>(null);
+  const [data, setData] = useState<GetChartsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCheckHours = async () => {
+  const handleGetCharts = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/tmetric/check-hours', {
+      const response = await fetch('/api/tmetric/charts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      const result: CheckHoursResponse = await response.json();
+      const result: GetChartsResponse = await response.json();
 
       if (result.success) {
         setData(result);
@@ -52,13 +52,13 @@ export default function Dashboard() {
               <div className="flex space-x-4">
                 <Link
                   href="/"
-                  className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                  className="text-sm font-medium text-gray-700 hover:text-gray-900"
                 >
                   Verificar Horas
                 </Link>
                 <Link
                   href="/charts"
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="text-sm font-medium text-blue-600 hover:text-blue-800"
                 >
                   Gráficos
                 </Link>
@@ -82,14 +82,14 @@ export default function Dashboard() {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Verificación de Horas Registradas
+                  Gráficos de Horas Trabajadas
                 </h2>
                 <p className="text-gray-600 mt-1">
-                  Detecta empleados sin horas registradas en los últimos 2 días laborables
+                  Visualiza las horas trabajadas de todos los usuarios en los últimos 30 días
                 </p>
               </div>
               <button
-                onClick={handleCheckHours}
+                onClick={handleGetCharts}
                 disabled={loading}
                 className="px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
@@ -115,10 +115,10 @@ export default function Dashboard() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    Verificando...
+                    Cargando...
                   </span>
                 ) : (
-                  'Verificar Horas'
+                  'Cargar Gráficos'
                 )}
               </button>
             </div>
@@ -150,37 +150,46 @@ export default function Dashboard() {
 
             {data?.data && (
               <>
-                <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-blue-50 rounded-lg p-4">
-                    <p className="text-sm text-blue-600 font-medium">Período Verificado</p>
+                    <p className="text-sm text-blue-600 font-medium">Período</p>
                     <p className="mt-1 text-lg font-semibold text-blue-900">
                       {data.data.dateRange.from} - {data.data.dateRange.to}
                     </p>
                   </div>
-                  <div className="bg-red-50 rounded-lg p-4">
-                    <p className="text-sm text-red-600 font-medium">Usuarios Sin Horas</p>
-                    <p className="mt-1 text-3xl font-bold text-red-900">
-                      {data.data.usersWithoutHours.length}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 font-medium">Última Verificación</p>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {new Date(data.data.checkedAt).toLocaleString('es-ES')}
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <p className="text-sm text-green-600 font-medium">Total de Usuarios</p>
+                    <p className="mt-1 text-3xl font-bold text-green-900">
+                      {data.data.totalUsers}
                     </p>
                   </div>
                 </div>
 
-                <UserTable
-                  users={data.data.usersWithoutHours}
-                  dateRange={data.data.dateRange}
-                />
+                <div className="space-y-6">
+                  {data.data.users.map((user: UserChartData) => (
+                    <div key={user.id} className="bg-gray-50 rounded-lg p-6">
+                      <div className="mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900">{user.name}</h3>
+                        <p className="text-sm text-gray-600">
+                          Total últimos 30 días: <span className="font-medium">{user.totalHoursLast30Days}</span>
+                        </p>
+                      </div>
+                      {user.dailyHours && user.dailyHours.length > 0 ? (
+                        <UserChart userName={user.name} dailyHours={user.dailyHours} />
+                      ) : (
+                        <p className="text-gray-500 text-center py-8">
+                          No hay datos de horas para este usuario en los últimos 30 días
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </>
             )}
 
             {!data && !loading && !error && (
               <div className="text-center py-12 text-gray-500">
-                Haz clic en "Verificar Horas" para comenzar
+                Haz clic en "Cargar Gráficos" para comenzar
               </div>
             )}
           </div>
