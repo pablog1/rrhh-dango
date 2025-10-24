@@ -224,10 +224,14 @@ async function getUsersWithoutHours(
       try {
         // Find cells in the row
         const cells = row.querySelectorAll('td');
-        if (cells.length < 3) return;
+        if (cells.length < 4) return; // Need at least 4 cells
 
-        // Extract person name (first column)
-        const personCell = cells[0];
+        // Extract person name (second column - cells[1])
+        // cells[0] is empty (checkbox/expand button)
+        // cells[1] contains the person name
+        // cells[2] contains days worked
+        // cells[3] contains total hours
+        const personCell = cells[1];
 
         // We'll extract userId by clicking on the row later
         // For now, just mark it as empty
@@ -236,20 +240,20 @@ async function getUsersWithoutHours(
         // Note: TMetric's staff report doesn't have direct links to users
         // We'll need to click on each row to get the userId from the URL
 
-        // Try to get name from direct text content first
+        // Extract name from cell
         let name = personCell.textContent?.trim() || '';
 
         // If empty, try to find in specific elements
         if (!name || name === '') {
-          const nameElement = personCell.querySelector('a, span, div, td');
+          const nameElement = personCell.querySelector('a, span, div');
           name = nameElement?.textContent?.trim() || 'Unknown';
         }
 
         // Clean up the name (remove extra whitespace)
         name = name.replace(/\s+/g, ' ').trim() || 'Unknown';
 
-        // Extract time worked (third column - TIME WORKED)
-        const timeWorkedCell = cells[2];
+        // Extract time worked (fourth column - cells[3] for total hours)
+        const timeWorkedCell = cells[3];
         const timeWorked = timeWorkedCell?.textContent?.trim() || '0 min';
 
         // Check if time is "0 min" or empty
