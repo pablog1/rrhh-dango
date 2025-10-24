@@ -34,10 +34,13 @@ export default function UserTable({ users, dateRange }: UserTableProps) {
               Nombre
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Email
+              Último Registro
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Último Registro
+              Días Sin Registros
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Horas Últimos 30 Días
             </th>
           </tr>
         </thead>
@@ -54,14 +57,23 @@ export default function UserTable({ users, dateRange }: UserTableProps) {
                 {user.name}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {user.email}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {user.lastEntry ? (
-                  new Date(user.lastEntry).toLocaleDateString('es-ES')
+                  <span>{user.lastEntry}</span>
                 ) : (
                   <span className="text-gray-400">Sin registros</span>
                 )}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {user.daysWithoutEntries !== undefined ? (
+                  <span className={user.daysWithoutEntries > 7 ? 'text-red-600 font-semibold' : ''}>
+                    {user.daysWithoutEntries} días
+                  </span>
+                ) : (
+                  <span className="text-gray-400">-</span>
+                )}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {user.totalHoursLast30Days || '0 h 0 min'}
               </td>
             </tr>
           ))}

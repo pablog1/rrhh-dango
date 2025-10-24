@@ -3,6 +3,8 @@ export interface UserWithoutHours {
   name: string;
   email: string;
   lastEntry: string | null; // ISO date string or null
+  totalHoursLast30Days?: string; // Total hours in last 30 days (e.g., "15 h 30 min")
+  daysWithoutEntries?: number; // Number of days since last entry
 }
 
 export interface CheckHoursResponse {
