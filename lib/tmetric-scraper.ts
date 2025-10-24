@@ -300,8 +300,9 @@ async function getUsersWithoutHours(
         const rows = document.querySelectorAll('table.table-team-summary-report tbody tr');
         for (const row of rows) {
           const cells = row.querySelectorAll('td');
-          if (cells.length > 0) {
-            const nameCell = cells[0];
+          if (cells.length > 1) {
+            // cells[0] is empty (checkbox), cells[1] has the name
+            const nameCell = cells[1];
             const text = nameCell.textContent?.trim() || '';
             if (text === userName) {
               // Check for any data attributes
