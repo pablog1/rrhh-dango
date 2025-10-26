@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeUsersWithoutHours, getTMetricCredentials } from '@/lib/tmetric-scraper';
+import { getLastWorkdaysRange, toISODate } from '@/lib/date-utils';
 import { CheckHoursResponse } from '@/lib/types';
 import { sendSlackNotification } from '@/lib/slack';
 
@@ -32,33 +33,20 @@ export async function POST(request: NextRequest) {
     // Get TMetric credentials
     const credentials = getTMetricCredentials();
 
-    // Calculate date range (last 2 workdays)
-    const today = new Date();
-    const twoDaysAgo = new Date(today);
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    // Calculate last 2 workdays using shared utility
+    const { from, to } = getLastWorkdaysRange(2);
 
-    // Skip weekends
-    while (twoDaysAgo.getDay() === 0 || twoDaysAgo.getDay() === 6) {
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 1);
-    }
-    while (today.getDay() === 0 || today.getDay() === 6) {
-      today.setDate(today.getDate() - 1);
-    }
-
-    const fromDate = twoDaysAgo.toISOString().split('T')[0];
-    const toDate = today.toISOString().split('T')[0];
-
-    console.log('[API Cron] Checking hours for date range:', fromDate, 'to', toDate);
+    console.log(`[API Cron] Checking hours for date range: ${toISODate(from)} to ${toISODate(to)}`);
 
     // Scrape TMetric
-    const users = await scrapeUsersWithoutHours(credentials, twoDaysAgo, today);
+    const users = await scrapeUsersWithoutHours(credentials, from, to);
 
     const response: CheckHoursResponse = {
       success: true,
       data: {
         dateRange: {
-          from: fromDate,
-          to: toDate,
+          from: toISODate(from),
+          to: toISODate(to),
         },
         usersWithoutHours: users,
         totalUsers: users.length,
@@ -72,8 +60,8 @@ export async function POST(request: NextRequest) {
     sendSlackNotification(
       users,
       {
-        from: fromDate,
-        to: toDate,
+        from: toISODate(from),
+        to: toISODate(to),
       },
       false // isManual = false (automated)
     ).catch((error) => {
