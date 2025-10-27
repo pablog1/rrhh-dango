@@ -300,12 +300,15 @@ async function getUsersWithoutHours(
       const rowData = await page.evaluate((userName) => {
         const rows = document.querySelectorAll('table.table-team-summary-report tbody tr');
         for (const row of rows) {
-          const cells = row.querySelectorAll('td');
-          if (cells.length > 1) {
-            // cells[0] is empty (checkbox), cells[1] has the name
-            const nameCell = cells[1];
-            const text = nameCell.textContent?.trim() || '';
-            if (text === userName) {
+          // Find the name cell using the same selector as before
+          const nameCell = row.querySelector('td.col-name, td.col-name-narrow, td[ng-if*="user"]');
+
+          if (nameCell) {
+            // Check both title attribute and textContent
+            const titleName = nameCell.getAttribute('title') || '';
+            const textName = nameCell.textContent?.trim() || '';
+
+            if (titleName === userName || textName === userName) {
               // Check for any data attributes
               const rowAttrs: Record<string, string> = {};
               for (const attr of row.attributes) {
