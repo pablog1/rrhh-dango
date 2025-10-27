@@ -226,27 +226,28 @@ async function getUsersWithoutHours(
         const cells = row.querySelectorAll('td');
         if (cells.length < 4) return; // Need at least 4 cells
 
-        // Extract person name (second column - cells[1])
-        // cells[0] is empty (checkbox/expand button)
-        // cells[1] contains the person name
-        // cells[2] contains days worked
-        // cells[3] contains total hours
-        const personCell = cells[1];
+        // Extract person name - Find the cell with class containing 'col-name'
+        // TMetric structure has the name in a td with class like "col-report ng-binding ng-scope col-name-narrow"
+        const personCell = row.querySelector('td.col-name, td.col-name-narrow, td[ng-if*="user"]');
+
+        if (!personCell) {
+          return; // Skip if we can't find the name cell
+        }
 
         // We'll extract userId by clicking on the row later
         // For now, just mark it as empty
         let userId = '';
 
-        // Note: TMetric's staff report doesn't have direct links to users
-        // We'll need to click on each row to get the userId from the URL
+        // Extract name from the title attribute first (most reliable)
+        let name = personCell.getAttribute('title') || '';
 
-        // Extract name from cell
-        let name = personCell.textContent?.trim() || '';
-
-        // If empty, try to find in specific elements
-        if (!name || name === '') {
-          const nameElement = personCell.querySelector('a, span, div');
-          name = nameElement?.textContent?.trim() || 'Unknown';
+        // If no title, try textContent but exclude nested elements
+        if (!name) {
+          // Clone the cell to manipulate it
+          const cellClone = personCell.cloneNode(true) as HTMLElement;
+          // Remove image tags
+          cellClone.querySelectorAll('img').forEach(img => img.remove());
+          name = cellClone.textContent?.trim() || '';
         }
 
         // Clean up the name (remove extra whitespace)
