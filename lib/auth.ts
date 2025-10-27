@@ -1,6 +1,5 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import bcrypt from 'bcryptjs';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -18,35 +17,28 @@ export const authOptions: NextAuthOptions = {
 
         // Get admin credentials from environment
         const adminEmail = process.env.ADMIN_EMAIL;
-        const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+        const adminPassword = process.env.ADMIN_PASSWORD;
 
         // Validate environment variables are set
-        if (!adminEmail || !adminPasswordHash) {
-          console.error('[Auth] ADMIN_EMAIL or ADMIN_PASSWORD_HASH not configured');
+        if (!adminEmail || !adminPassword) {
+          console.error('[Auth] ADMIN_EMAIL or ADMIN_PASSWORD not configured');
           return null;
         }
 
-        // Check if email matches
-        if (credentials.email !== adminEmail) {
-          return null;
+        // Check credentials
+        if (
+          credentials.email === adminEmail &&
+          credentials.password === adminPassword
+        ) {
+          // Return user object if authentication successful
+          return {
+            id: '1',
+            email: credentials.email,
+            name: 'Admin',
+          };
         }
 
-        // Verify password using bcrypt
-        const isValidPassword = await bcrypt.compare(
-          credentials.password,
-          adminPasswordHash
-        );
-
-        if (!isValidPassword) {
-          return null;
-        }
-
-        // Return user object if authentication successful
-        return {
-          id: '1',
-          email: credentials.email,
-          name: 'Admin',
-        };
+        return null;
       },
     }),
   ],

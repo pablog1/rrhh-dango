@@ -69,9 +69,6 @@ ADMIN_PASSWORD=tu-password-seguro
 # TMetric - Credenciales para scraping
 TMETRIC_EMAIL=tu-email-tmetric@empresa.com
 TMETRIC_PASSWORD=tu-password-tmetric
-
-# Opcional
-NODE_ENV=development
 ```
 
 **Generar NEXTAUTH_SECRET:**

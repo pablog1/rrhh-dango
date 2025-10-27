@@ -23,7 +23,6 @@
   "dependencies": {
     "@types/node": "^24.9.1",
     "@types/react": "^19.2.2",
-    "bcryptjs": "^3.0.2",
     "chart.js": "^4.5.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
@@ -37,7 +36,6 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.38.0",
     "eslint-config-next": "^16.0.0",
