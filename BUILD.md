@@ -35,7 +35,17 @@ Remove any `export NODE_ENV=development` lines from your shell configuration fil
 
 ### Railway/Vercel Deployment
 
-For Railway or Vercel deployments, ensure that `NODE_ENV` is **not** set in your environment variables. The platform will set it automatically to `production` during builds.
+For Railway or Vercel deployments:
+
+1. **DO NOT** add `NODE_ENV` to your environment variables in the platform settings
+2. Railway and Vercel automatically set `NODE_ENV=production` during builds
+3. If you previously set `NODE_ENV` in Railway:
+   - Go to your project settings
+   - Navigate to Variables tab
+   - Delete any `NODE_ENV` variable
+   - Trigger a new deployment
+
+**Note:** The downgrade from Next.js 15.5.6 to 15.1.6 was necessary to avoid known build issues with error page generation in newer versions.
 
 ## Build Verification
 
