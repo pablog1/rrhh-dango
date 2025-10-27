@@ -29,18 +29,21 @@ WORKDIR /app
 # Copiar package files
 COPY package*.json ./
 
-# Instalar dependencias de Node
-RUN npm ci --only=production
-
-# Instalar Playwright y sus navegadores
-RUN npx playwright install chromium
-RUN npx playwright install-deps chromium
+# Instalar TODAS las dependencias (incluye devDependencies necesarias para build)
+RUN npm ci
 
 # Copiar el resto de la aplicación
 COPY . .
 
 # Build de Next.js
 RUN npm run build
+
+# Instalar Playwright y sus navegadores después del build
+RUN npx playwright install chromium
+RUN npx playwright install-deps chromium
+
+# Limpiar devDependencies después del build para reducir tamaño
+RUN npm prune --production
 
 # Exponer puerto
 EXPOSE 3000
