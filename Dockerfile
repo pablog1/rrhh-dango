@@ -42,6 +42,11 @@ RUN npm run build
 RUN npx playwright install chromium
 RUN npx playwright install-deps chromium
 
+# Copiar archivos standalone generados por Next.js
+RUN cp -r .next/standalone/. . && \
+    cp -r .next/static .next/standalone/.next/static && \
+    cp -r public .next/standalone/public || true
+
 # Limpiar devDependencies después del build para reducir tamaño
 RUN npm prune --production
 
@@ -51,6 +56,8 @@ EXPOSE 3000
 # Variables de entorno para Playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-# Comando de inicio usando standalone
-CMD ["node", ".next/standalone/server.js"]
+# Comando de inicio
+CMD ["node", "server.js"]
