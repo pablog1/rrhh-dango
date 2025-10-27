@@ -1,4 +1,5 @@
 # Dockerfile optimizado para Railway con soporte para Playwright
+# Build version: 2025-10-27
 FROM node:18-slim
 
 # Instalar dependencias del sistema necesarias para Playwright/Chromium
