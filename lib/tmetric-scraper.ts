@@ -703,7 +703,11 @@ async function getAllUsersChartData(
   // For each user, get their 30-day chart data
   const users: UserChartData[] = [];
 
-  for (const userInfo of allUsers) {
+  // TEMPORARY: Limit to first 2 users for testing
+  const usersToProcess = allUsers.slice(0, 2);
+  console.log(`[TMetric] Processing first ${usersToProcess.length} users for testing...`);
+
+  for (const userInfo of usersToProcess) {
     console.log(`[TMetric] Getting 30-day chart data for: ${userInfo.name}`);
 
     // Navigate back to staff report if needed
