@@ -121,9 +121,16 @@ async function loginToTMetric(page: Page, credentials: TMetricCredentials): Prom
   const currentUrl = page.url();
   console.log('[TMetric] Current URL after login:', currentUrl);
 
+  // Check for error messages on the login page
+  const errorMessage = await page.evaluate(() => {
+    const errorEl = document.querySelector('.validation-summary-errors, .field-validation-error, .text-danger, [class*="error"]');
+    return errorEl ? errorEl.textContent?.trim() : null;
+  });
+
   // Verify login was successful - should redirect away from login page
   if (currentUrl.includes('id.tmetric.com') || currentUrl.includes('/login')) {
-    throw new Error(`Login failed - still on login page: ${currentUrl}`);
+    const errorDetails = errorMessage ? ` Error: ${errorMessage}` : '';
+    throw new Error(`Login failed - still on login page: ${currentUrl}${errorDetails}`);
   }
 
   // Should be on app.tmetric.com now
@@ -891,11 +898,22 @@ export async function scrapeUsersWithoutHours(
       headless: isProduction ? true : false,
       slowMo: isProduction ? 0 : 500,
       timeout: 60000,
+      args: [
+        '--disable-blink-features=AutomationControlled', // Hide webdriver flag
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+      ],
     });
 
     const context = await browser.newContext({
       viewport: { width: 1280, height: 720 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      // Add more realistic browser properties
+      locale: 'en-US',
+      timezoneId: 'America/New_York',
+      permissions: [],
+      // Disable webdriver detection
+      javaScriptEnabled: true,
     });
 
     const page = await context.newPage();
@@ -945,11 +963,22 @@ export async function scrapeAllUsersChartData(
       headless: isProduction ? true : false,
       slowMo: isProduction ? 0 : 500,
       timeout: 60000,
+      args: [
+        '--disable-blink-features=AutomationControlled', // Hide webdriver flag
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+      ],
     });
 
     const context = await browser.newContext({
       viewport: { width: 1280, height: 720 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      // Add more realistic browser properties
+      locale: 'en-US',
+      timezoneId: 'America/New_York',
+      permissions: [],
+      // Disable webdriver detection
+      javaScriptEnabled: true,
     });
 
     const page = await context.newPage();
