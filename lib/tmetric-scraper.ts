@@ -673,17 +673,32 @@ async function getAllUsersChartData(
     }
 
     const rows = table.querySelectorAll('tbody tr');
+    console.log(`[TMetric] Found ${rows.length} rows in staff report table`);
 
     rows.forEach((row, index) => {
       try {
-        const cells = row.querySelectorAll('td');
-        if (cells.length < 3) return;
+        // Use the same method as scrapeUsersWithoutHours - look for col-name cell
+        const personCell = row.querySelector('td.col-name, td.col-name-narrow, td[ng-if*="user"]');
 
-        const personCell = cells[0];
-        let name = personCell.textContent?.trim() || '';
-        name = name.replace(/\s+/g, ' ').trim() || 'Unknown';
+        if (!personCell) {
+          console.log(`[TMetric] Row ${index}: No col-name cell found`);
+          return;
+        }
 
-        if (name && name !== 'Unknown') {
+        // Try to get name from title attribute first, then textContent
+        let name = personCell.getAttribute('title') || '';
+
+        if (!name) {
+          // Fallback: clone and remove images, then get text
+          const cellClone = personCell.cloneNode(true) as HTMLElement;
+          cellClone.querySelectorAll('img').forEach(img => img.remove());
+          name = cellClone.textContent?.trim() || '';
+        }
+
+        name = name.replace(/\s+/g, ' ').trim();
+        console.log(`[TMetric] Row ${index}: Found name="${name}"`);
+
+        if (name && name !== 'Unknown' && name.length > 0) {
           results.push({
             id: `user-${index}`,
             name: name,
@@ -695,6 +710,7 @@ async function getAllUsersChartData(
       }
     });
 
+    console.log(`[TMetric] Extracted ${results.length} users from table`);
     return results;
   });
 
