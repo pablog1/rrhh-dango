@@ -118,7 +118,7 @@ async function loginToTMetric(page: Page, credentials: TMetricCredentials): Prom
   try {
     // Wait for either navigation away from login page OR timeout
     await Promise.race([
-      page.waitForURL(url => !url.includes('id.tmetric.com'), { timeout: 30000 }),
+      page.waitForURL(url => !url.toString().includes('id.tmetric.com'), { timeout: 30000 }),
       page.waitForLoadState('networkidle', { timeout: 30000 }),
     ]);
   } catch (error) {
