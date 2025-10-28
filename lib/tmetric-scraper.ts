@@ -112,24 +112,47 @@ async function loginToTMetric(page: Page, credentials: TMetricCredentials): Prom
     throw new Error('Could not find or click submit button');
   }
 
-  // Wait for navigation after login
+  // Wait for navigation after login - try to wait for URL change or timeout
   console.log('[TMetric] Waiting for successful login...');
-  await page.waitForLoadState('networkidle', { timeout: 30000 }); // Increased timeout for Railway
+
+  try {
+    // Wait for either navigation away from login page OR timeout
+    await Promise.race([
+      page.waitForURL(url => !url.includes('id.tmetric.com'), { timeout: 30000 }),
+      page.waitForLoadState('networkidle', { timeout: 30000 }),
+    ]);
+  } catch (error) {
+    console.log('[TMetric] Navigation timeout - checking current state...');
+  }
 
   await page.screenshot({ path: 'debug-after-login.png' });
   console.log('[TMetric] Screenshot saved: debug-after-login.png');
   const currentUrl = page.url();
   console.log('[TMetric] Current URL after login:', currentUrl);
 
-  // Check for error messages on the login page
-  const errorMessage = await page.evaluate(() => {
+  // Check for error messages or reCAPTCHA on the login page
+  const pageInfo = await page.evaluate(() => {
     const errorEl = document.querySelector('.validation-summary-errors, .field-validation-error, .text-danger, [class*="error"]');
-    return errorEl ? errorEl.textContent?.trim() : null;
+    const recaptcha = document.querySelector('.g-recaptcha, [class*="recaptcha"], #recaptcha');
+    const bodyText = document.body.innerText;
+
+    return {
+      error: errorEl ? errorEl.textContent?.trim() : null,
+      hasRecaptcha: !!recaptcha,
+      bodyPreview: bodyText.substring(0, 500), // First 500 chars of page content
+    };
   });
+
+  console.log('[TMetric] Page info after login attempt:', JSON.stringify(pageInfo, null, 2));
 
   // Verify login was successful - should redirect away from login page
   if (currentUrl.includes('id.tmetric.com') || currentUrl.includes('/login')) {
-    const errorDetails = errorMessage ? ` Error: ${errorMessage}` : '';
+    let errorDetails = '';
+    if (pageInfo.error) {
+      errorDetails = ` Error: ${pageInfo.error}`;
+    } else if (pageInfo.hasRecaptcha) {
+      errorDetails = ' - reCAPTCHA detected (Railway IP may be blocked)';
+    }
     throw new Error(`Login failed - still on login page: ${currentUrl}${errorDetails}`);
   }
 
