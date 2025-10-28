@@ -738,6 +738,16 @@ async function getAllUsersChartData(
     await page.waitForTimeout(2000);
     await page.waitForSelector('table.table-team-summary-report', { timeout: 10000 });
 
+    // Wait for Angular to be available
+    await page.waitForFunction(() => {
+      return typeof (window as any).angular !== 'undefined';
+    }, { timeout: 10000 }).catch(() => {
+      console.log('[TMetric]   Warning: Angular not detected after 10s, continuing anyway...');
+    });
+
+    // Additional wait for Angular to bootstrap
+    await page.waitForTimeout(1000);
+
     // Take screenshot for first user only (for debugging)
     if (userInfo === allUsers[0]) {
       await page.screenshot({ path: `debug-charts-staff-report-${Date.now()}.png` });
