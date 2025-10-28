@@ -55,7 +55,7 @@ EXPOSE 3000
 
 # Variables de entorno para Playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
