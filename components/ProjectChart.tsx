@@ -25,12 +25,12 @@ ChartJS.register(
   Legend
 );
 
-interface UserChartProps {
-  userName: string;
+interface ProjectChartProps {
+  projectName: string;
   dailyHours: DailyHours[];
 }
 
-export default function UserChart({ userName, dailyHours }: UserChartProps) {
+export default function ProjectChart({ projectName, dailyHours }: ProjectChartProps) {
   // Sort daily hours by date (oldest to newest) and format labels
   const sortedData = [...dailyHours]
     .map(item => {
@@ -100,8 +100,8 @@ export default function UserChart({ userName, dailyHours }: UserChartProps) {
       {
         label: 'Hours Worked',
         data: sortedData.map(item => item.hours),
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: 'rgb(16, 185, 129)', // Green color for projects
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
         tension: 0.3,
         fill: true,
       },
@@ -117,7 +117,7 @@ export default function UserChart({ userName, dailyHours }: UserChartProps) {
       },
       title: {
         display: true,
-        text: `${userName} - Last 30 Days`,
+        text: `${projectName} - Últimos 30 Días`,
         font: {
           size: 16,
           weight: 'bold',

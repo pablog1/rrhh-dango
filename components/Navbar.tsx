@@ -38,7 +38,17 @@ export default function Navbar() {
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                Gráficos
+                Gráficos Usuarios
+              </Link>
+              <Link
+                href="/project-charts"
+                className={`text-sm font-medium ${
+                  isActive('/project-charts')
+                    ? 'text-green-600 hover:text-green-800'
+                    : 'text-gray-700 hover:text-gray-900'
+                }`}
+              >
+                Gráficos Proyectos
               </Link>
             </div>
           </div>

@@ -53,3 +53,25 @@ export interface GetChartsResponse {
   };
   error?: string;
 }
+
+export interface ProjectChartData {
+  id: string;
+  name: string;
+  client?: string;
+  dailyHours: DailyHours[]; // Daily hours for the last 30 days
+  totalHoursLast30Days: string; // Total hours in last 30 days (e.g., "15 h 30 min")
+}
+
+export interface GetProjectChartsResponse {
+  success: boolean;
+  data?: {
+    dateRange: {
+      from: string; // ISO date
+      to: string;   // ISO date
+    };
+    projects: ProjectChartData[];
+    totalProjects: number;
+    checkedAt: string; // ISO timestamp
+  };
+  error?: string;
+}
