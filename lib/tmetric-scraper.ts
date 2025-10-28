@@ -114,11 +114,22 @@ async function loginToTMetric(page: Page, credentials: TMetricCredentials): Prom
 
   // Wait for navigation after login
   console.log('[TMetric] Waiting for successful login...');
-  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  await page.waitForLoadState('networkidle', { timeout: 30000 }); // Increased timeout for Railway
 
   await page.screenshot({ path: 'debug-after-login.png' });
   console.log('[TMetric] Screenshot saved: debug-after-login.png');
-  console.log('[TMetric] Current URL after login:', page.url());
+  const currentUrl = page.url();
+  console.log('[TMetric] Current URL after login:', currentUrl);
+
+  // Verify login was successful - should redirect away from login page
+  if (currentUrl.includes('id.tmetric.com') || currentUrl.includes('/login')) {
+    throw new Error(`Login failed - still on login page: ${currentUrl}`);
+  }
+
+  // Should be on app.tmetric.com now
+  if (!currentUrl.includes('app.tmetric.com')) {
+    throw new Error(`Unexpected URL after login: ${currentUrl}`);
+  }
 
   console.log('[TMetric] Login successful!');
 }
