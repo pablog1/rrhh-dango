@@ -39,17 +39,16 @@ COPY . .
 # Build de Next.js
 RUN npm run build
 
-# Instalar Playwright y sus navegadores después del build
-RUN npx playwright install chromium
-RUN npx playwright install-deps chromium
-
 # Copiar archivos standalone generados por Next.js
 RUN cp -r .next/standalone/. . && \
     cp -r .next/static .next/standalone/.next/static && \
     cp -r public .next/standalone/public || true
 
-# Limpiar devDependencies después del build para reducir tamaño
-RUN npm prune --production
+# Instalar Playwright y Chromium ANTES de limpiar node_modules
+RUN npx playwright install chromium
+RUN npx playwright install-deps chromium
+
+# NO hacer npm prune porque Playwright necesita estar disponible en runtime
 
 # Exponer puerto
 EXPOSE 3000
