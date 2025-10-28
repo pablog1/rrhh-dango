@@ -874,9 +874,11 @@ export async function scrapeUsersWithoutHours(
 
   try {
     console.log('[TMetric] Launching browser...');
+    // Use headless mode in production (Railway), headed mode in development
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
     browser = await chromium.launch({
-      headless: false, // Always headed for debugging
-      slowMo: 500, // Slow down actions for visibility
+      headless: isProduction ? true : false,
+      slowMo: isProduction ? 0 : 500,
       timeout: 60000,
     });
 
@@ -926,9 +928,11 @@ export async function scrapeAllUsersChartData(
 
   try {
     console.log('[TMetric] Launching browser for chart data...');
+    // Use headless mode in production (Railway), headed mode in development
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
     browser = await chromium.launch({
-      headless: false,
-      slowMo: 500,
+      headless: isProduction ? true : false,
+      slowMo: isProduction ? 0 : 500,
       timeout: 60000,
     });
 
