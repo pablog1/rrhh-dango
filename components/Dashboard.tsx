@@ -22,7 +22,7 @@ export default function Dashboard() {
               Verificación de Horas Registradas
             </h2>
             <p className="text-gray-600 mt-1">
-              Detecta empleados sin horas registradas en los últimos 2 días laborables
+              Detecta empleados que no han registrado horas por más de 2 días laborables (excluyendo fines de semana)
             </p>
           </div>
           <button
