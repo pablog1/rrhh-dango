@@ -17,13 +17,19 @@ export async function POST(request: NextRequest) {
 
     console.log('[API] Get project charts request from:', session.user.email);
 
+    // Get days parameter from request body (default to 30)
+    const body = await request.json();
+    const days = body.days && (body.days === 30 || body.days === 60) ? body.days : 30;
+
+    console.log('[API] Fetching data for last', days, 'days');
+
     // Get TMetric credentials
     const credentials = getTMetricCredentials();
 
-    // Calculate date range (last 30 days)
+    // Calculate date range
     const toDate = new Date();
     const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - 30);
+    fromDate.setDate(fromDate.getDate() - days);
 
     console.log('[API] Getting project chart data for date range:', fromDate.toISOString().split('T')[0], 'to', toDate.toISOString().split('T')[0]);
 

@@ -28,9 +28,10 @@ ChartJS.register(
 interface ProjectChartProps {
   projectName: string;
   dailyHours: DailyHours[];
+  color?: string;
 }
 
-export default function ProjectChart({ projectName, dailyHours }: ProjectChartProps) {
+export default function ProjectChart({ projectName, dailyHours, color = 'rgb(16, 185, 129)' }: ProjectChartProps) {
   // Sort daily hours by date (oldest to newest) and format labels
   const sortedData = [...dailyHours]
     .map(item => {
@@ -94,14 +95,23 @@ export default function ProjectChart({ projectName, dailyHours }: ProjectChartPr
     }
   };
 
+  // Extract RGB values from color string for background with alpha
+  const getBackgroundColor = (colorString: string) => {
+    const match = colorString.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (match) {
+      return `rgba(${match[1]}, ${match[2]}, ${match[3]}, 0.1)`;
+    }
+    return 'rgba(16, 185, 129, 0.1)'; // Default fallback
+  };
+
   const data = {
     labels: sortedData.map(item => `${item.label}\n${item.dayName}`),
     datasets: [
       {
         label: 'Hours Worked',
         data: sortedData.map(item => item.hours),
-        borderColor: 'rgb(16, 185, 129)', // Green color for projects
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderColor: color,
+        backgroundColor: getBackgroundColor(color),
         tension: 0.3,
         fill: true,
       },

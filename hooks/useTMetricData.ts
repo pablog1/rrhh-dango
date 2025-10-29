@@ -2,11 +2,12 @@ import { useState } from 'react';
 
 interface UseTMetricDataOptions<T> {
   endpoint: string;
+  params?: Record<string, any>;
   onSuccess?: (data: T) => void;
   onError?: (error: string) => void;
 }
 
-export function useTMetricData<T>({ endpoint, onSuccess, onError }: UseTMetricDataOptions<T>) {
+export function useTMetricData<T>({ endpoint, params, onSuccess, onError }: UseTMetricDataOptions<T>) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +22,7 @@ export function useTMetricData<T>({ endpoint, onSuccess, onError }: UseTMetricDa
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify(params || {}),
       });
 
       const result = await response.json();
